@@ -1,0 +1,10 @@
+#!/usr/bin/env php
+<?php
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Symfony\Component\Console\Application;
+use App\Command\Rabbit\PublishMessage as PublishMessageCommand;
+
+$app = new Application();
+$app->add(new PublishMessageCommand());
+$app->run();
