@@ -1,0 +1,27 @@
+version: '2.2'
+
+services:
+
+  php:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    command: ["php", "-S", "0.0.0.0:8000", "-t", "/var/www/html"]
+    ports:
+      - "8000"
+    volumes:
+      - ./docker/config/php.ini:/usr/local/etc/php/php.ini
+      - ./:/var/www/html/:z
+
+  rabbitmq:
+    build:
+      context: .
+      dockerfile: docker/rabbitmq/Dockerfile
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+volumes:
+  rabbitmq-data:
