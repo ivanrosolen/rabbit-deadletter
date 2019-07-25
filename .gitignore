@@ -1,3 +1,42 @@
-src/vendor
-src/composer.lock
+ser.lock
+vendor
+nbproject
+log/access.log
+log/error.log
+cache
+config/settings.ini
+
+# numerous always-ignore extensions
+*.diff
+*.err
+*.orig
+*.log
+*.rej
+*.swo
+*.swp
+*.vi
+*~
+*.sass-cache
+
+# os or editor folders
+.ds_store
+.DS_Store
+.cache
+.project
+.settings
+.idea/
+nbproject
+thumbs.db
+
+# folders to ignore
+.hg
+.svn
+intermediate
+publish
 .idea
+node_modules
+
+# build script local files
+build/
+build/buildinfo.properties
+build/config/buildinfo.properties
