@@ -1,0 +1,15 @@
+; RabbitMQ Server Confs
+
+[rabbitmq]
+host  = 'rabbitmq-server'
+vhost = '/'
+port  = 5672
+user  = 'guest'
+pwd   = 'guest'
+
+; Time to live = 5 seconds
+ttl   = 5000
+
+deadletter-exchange    = 'deadletter-exchange'
+deadletter-queue       = 'deadletter-queue'
+deadletter-routing-key = 'deadletter-routing-key'

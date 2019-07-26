@@ -4,7 +4,7 @@ nbproject
 log/access.log
 log/error.log
 cache
-config/settings.ini
+config/rabbitmq.ini
 
 # numerous always-ignore extensions
 *.diff
