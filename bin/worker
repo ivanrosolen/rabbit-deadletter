@@ -1,0 +1,40 @@
+#!/usr/bin/env php
+<?php
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use PhpAmqpLib\Connection\AMQPConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+
+$rabbitmqConfigFile = __DIR__ . '/../config/rabbitmq.ini';
+if (is_file($rabbitmqConfigFile)) {
+    $rabbitmqConfig = parse_ini_file($rabbitmqConfigFile,true);
+}
+
+$amqp = new AMQPConnection(
+    $rabbitmqConfig['rabbitmq']['host'],
+    $rabbitmqConfig['rabbitmq']['port'],
+    $rabbitmqConfig['rabbitmq']['user'],
+    $rabbitmqConfig['rabbitmq']['pwd'],
+    $rabbitmqConfig['rabbitmq']['vhost']
+);
+$channel = $amqp->channel();
+
+$callback = function ($msg) {
+    echo ' [x] Received ', $msg->body, "\n";
+    sleep(substr_count($msg->body, '.'));
+    echo " [x] Done\n";
+
+    sleep(20000);
+    $msg->delivery_info['channel']->basic_nack($msg->delivery_info['delivery_tag']);
+
+};
+
+$channel->basic_qos(null, 1, null);
+$channel->basic_consume('DefaultQueue', '', false, false, false, false, $callback);
+
+while(count($channel->callbacks)) {
+    $channel->wait();
+}
+
+$channel->close();
+$connection->close();
