@@ -8,9 +8,19 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use PhpAmqpLib\Connection\AMQPConnection;
 use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Exchange\AMQPExchangeType;
 
 class PublishMessage extends Command
 {
+
+    protected $config;
+
+    public function __construct(Array $config)
+    {
+        parent::__construct();
+
+        $this->config = $config;
+    }
 
     protected function configure()
     {
@@ -22,58 +32,101 @@ class PublishMessage extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
 
+        if (!$this->config['rabbitmq']['host'] ||
+            !$this->config['rabbitmq']['port'] ||
+            !$this->config['rabbitmq']['user'] ||
+            !$this->config['rabbitmq']['pwd'] ||
+            !$this->config['rabbitmq']['vhost'] ||
+            !$this->config['rabbitmq']['ttl']
+        ) {
+            throw new \RuntimeException('Invalid RabbitMQ Config');
+        }
+
+        // @todo: check if setup is ok
+
+        $amqp = new AMQPConnection(
+            $this->config['rabbitmq']['host'],
+            $this->config['rabbitmq']['port'],
+            $this->config['rabbitmq']['user'],
+            $this->config['rabbitmq']['pwd'],
+            $this->config['rabbitmq']['vhost']
+        );
+        $rabbit = $amqp->channel();
+
         $io = new SymfonyStyle($input, $output);
 
         $exchange = $io->ask(
-            'Please enter the name of the exchange',
+            'Please enter the name of the Exchange',
             'DefaultExchange');
 
         $queue = $io->ask(
-            'Please enter the name of the queue',
+            'Please enter the name of the Queue',
             'DefaultQueue');
 
-        $message = $io->ask(
-            'Please enter the message',
-            'Default Message 123',
-            function ($answer) {
-                if (strlen($answer) < 3 ) {
-                    throw new \RuntimeException('You must type a message with more than 3 chars');
-                }
-                return $answer;
-        });
+        $routingKey = $io->ask(
+            'Please enter the Routing Key',
+            'DefaultRoutingKey');
 
-        $io->newLine();
+        $end = false;
+        while ($end === false) {
 
-        // @todo: get rabbit infos  from conf
-        $amqp = new AMQPConnection('rabbitmq-server', 5672, 'guest', 'guest');
-        $rabbit = $amqp->channel();
+            $message = $io->ask(
+                'Please enter the message',
+                'Default Message 123',
+                function ($answer) {
+                    if (strlen($answer) < 3 ) {
+                        throw new \RuntimeException('You must type a message with more than 3 chars');
+                    }
+                    return $answer;
+            });
 
-        // @todo: Exchange check
-        $rabbit->exchange_declare($exchange,'direct',false,false,false);
+            $io->newLine();
 
-        // @todo: Queue Check
-        $rabbit->queue_declare($queue, false, true, false, false);
+            $rabbit->exchange_declare(
+                $exchange,
+                AMQPExchangeType::DIRECT,
+                false,
+                false,
+                false
+            );
 
-        // @todo: Bind Check
-        $rabbit->queue_bind($queue,$exchange);
+            $rabbit->queue_declare(
+                $queue,
+                false,
+                true,
+                false,
+                false,
+                false,
+                [
+                    'x-message-ttl' => ['I',$this->config['rabbitmq']['ttl']],
+                    'x-dead-letter-exchange' => ['S','deadletter-exchange'],
+                    'x-dead-letter-routing-key' => ['S','deadletter-routing-key']
+                 ]
+            );
 
-        // @todo: Send Message
-        $msg = new AMQPMessage(
-            $message,
-            array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
-        );
+            $rabbit->queue_bind(
+                $queue,
+                $exchange,
+                $routingKey
+            );
 
-        $rabbit->basic_publish($msg,$exchange);
+            $msg = new AMQPMessage(
+                $message,
+                [
+                    'content_type' => 'text/plain',
+                    'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT
+                ]
+            );
+
+            $rabbit->basic_publish($msg,$exchange,$routingKey);
+
+            $end = $io->confirm('Publish another message?', true) ? false : true;
+        }
 
         $rabbit->close();
         $amqp->close();
 
-        $io->success([
-            '',
-            sprintf('The exchange is: %s', $exchange),
-            sprintf('The queue is: %s', $queue),
-            sprintf('The message is: %s', $message),
-        ]);
+        $io->success('All Done!');
 
     }
 }
