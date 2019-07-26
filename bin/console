@@ -3,8 +3,19 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Symfony\Component\Console\Application;
-use App\Command\Rabbit\PublishMessage as PublishMessageCommand;
+use App\Command\Rabbit\PublishMessage as RabbitPublishMessageCommand;
+use App\Command\Rabbit\Setup as RabbitSetupCommand;
 
 $app = new Application();
-$app->add(new PublishMessageCommand());
+
+$rabbitmqConfigFile = __DIR__ . '/../config/rabbitmq.ini';
+if (is_file($rabbitmqConfigFile)) {
+
+    $rabbitmqConfig = parse_ini_file($rabbitmqConfigFile,true);
+
+    $app->add(new RabbitSetupCommand($rabbitmqConfig));
+    $app->add(new RabbitPublishMessageCommand($rabbitmqConfig));
+
+}
+
 $app->run();
